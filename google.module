@@ -1,0 +1,135 @@
+<?php
+/**
+ * @file google.module
+ *   Provide access to the Google APIs, should be completely configurable.
+ * 
+ * @author Raymond Jelierse
+ */
+
+/**
+ * Implements hook_init()
+ */
+function google_init() {
+  if (variable_get('google_plusone_button_enabled', FALSE)) {
+    drupal_set_html_head('<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>');
+  }
+}
+/**
+ * Implements hook_menu()
+ */
+function google_menu() {
+  $menu = array(
+    'admin/settings/google' => array(
+      'title' => 'Google',
+      'description' => 'Manage the available Google APIs',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('google_settings_form'),
+      'access arguments' => array('administer google configuration'),
+    ),
+    'admin/settings/google/manage-apis' => array(
+      'title' => 'Manage',
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+      'weight' => -50,
+    ),
+    'admin/settings/google/plus-one' => array(
+      'title' => 'Google +1',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('google_plusone_button_settings_form'),
+      'access arguments' => array('administer google configuration'),
+      'type' => MENU_LOCAL_TASK,
+      'weight' => -49,
+    ),
+  );
+  
+  return $menu;
+}
+
+/**
+ * Implements hook_namespaces()
+ */
+function google_namespaces() {
+  return array(
+    'g' => 'http://base.google.com/ns/1.0',
+    'gm' => 'http://base.google.com/ns-metadata/1.0',
+  );
+}
+
+/**
+ * Implements hook_theme()
+ */
+function google_theme() {
+  return array(
+    'plusone_button' => array(),
+  );
+}
+
+/**
+ * General settings for the Google APIs.
+ * 
+ * @return 
+ *   The settings form 
+ */
+function google_settings_form() {
+  return system_settings_form(array(
+    'google_apis' => array(
+      '#type' => 'fieldset',
+      '#title' => t('Available APIs'),
+      '#collapsible' => TRUE,
+      'google_plusone_button_enabled' => array(
+        '#type' => 'checkbox',
+        '#title' => t('Google +1 Button'),
+        '#default_value' => variable_get('google_plusone_button_enabled', FALSE),
+      ),
+    ),
+  ));
+}
+
+/**
+ * Google +1 Button settings
+ * 
+ * @return
+ *   The settings form
+ */
+function google_plusone_button_settings_form() {
+  return system_settings_form(array(
+    'google_plusone_button_size' => array(
+      '#type' => 'select',
+      '#title' => t('Button size'),
+      '#default_value' => variable_get('google_plusone_button_size', 'tall'),
+      '#options' => array(
+        'small' => t('Small'),
+        'medium' => t('Medium'),
+        'standard' => t('Standard'),
+        'tall' => t('Tall'),
+      ),
+    ),
+    'google_plusone_button_count' => array(
+      '#type' => 'checkbox',
+      '#title' => t('Show number of +1\'s'),
+      '#default_value' => variable_get('google_plusone_button_count', TRUE),
+      '#description' => t('Note. This setting only applies to some of the button sizes, see the <a href="@plusone-doc">documentation</a> for more information.', array('@plusone-doc' => 'http://code.google.com/apis/+1button/#button-sizes'))
+    ),
+  ));
+}
+
+function google_nodeapi(&$node, $operation, $data1 = NULL, $data2 = NULL) {
+  switch ($operation) {
+    case 'view':
+      if (variable_get('google_plusone_button_enabled', FALSE)) {
+        $node->content['google_plusone'] = array(
+          '#value' => theme('plusone_button'),
+        );
+        $node->google_plusone_rendered = drupal_render($node->content['google_plusone']);
+      }
+      break;
+  }
+}
+
+function theme_plusone_button() {
+  $content  = '<g:plusone';
+  $content .= ' size="' . variable_get('google_plusone_button_size', 'tall') . '"';
+  $content .= ' count="' . (variable_get('google_plusone_button_count', TRUE) ? 'true' : 'false') . '"';
+  $content .= '></g:plusone>';
+  
+  return $content;
+}
